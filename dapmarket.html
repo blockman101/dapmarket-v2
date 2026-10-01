@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DapMarket</title>
+<style>
+:root{
+  --bg:#0b1120;--panel:#111c31;--panel2:#18253d;--border:#263653;
+  --text:#f8fafc;--muted:#94a3b8;--green:#22c55e;--red:#ef4444;
+  --blue:#38bdf8;--gold:#fbbf24;--shadow:0 20px 50px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:radial-gradient(circle at top,#172554 0,#0b1120 45%);color:var(--text);min-height:100vh}
+button,input,select{font:inherit}
+button{border:0;cursor:pointer}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(11,17,32,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:900;font-size:20px}.brand span{color:var(--blue)}
+.owner-btn{background:#263653;color:white;border:1px solid #34486b;padding:9px 13px;border-radius:10px;font-weight:700}
+.owner-btn:hover{background:#33496e}
+.container{width:min(1050px,calc(100% - 28px));margin:0 auto;padding:28px 0 45px}
+.hero{text-align:center;margin-bottom:20px}.hero h1{font-size:clamp(32px,7vw,52px);margin:8px 0}.hero p{color:var(--muted);margin:0}
+.card{background:linear-gradient(145deg,rgba(24,37,61,.96),rgba(17,28,49,.96));border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
+.market{padding:22px}
+.player-row{display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:7px;min-width:190px}.field label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+select,input{background:#0b1426;color:white;border:1px solid #30415f;border-radius:10px;padding:11px 12px;outline:none}
+select:focus,input:focus{border-color:var(--blue)}
+.price{text-align:center;font-size:clamp(42px,9vw,70px);font-weight:900;margin:18px 0 2px;letter-spacing:-2px}
+.change{text-align:center;font-weight:800;min-height:22px}.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--muted)}
+.chart-wrap{height:290px;margin:18px 0;background:#0b1426;border:1px solid var(--border);border-radius:14px;padding:8px}
+canvas{width:100%;height:100%;display:block}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{background:rgba(38,54,83,.55);border:1px solid var(--border);border-radius:14px;padding:15px;text-align:center}
+.stat .label{font-size:12px;color:var(--muted);font-weight:700}.stat .value{font-size:22px;font-weight:900;margin-top:5px}
+.trade{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.trade button{padding:14px;border-radius:12px;color:white;font-weight:900;font-size:16px;transition:.15s}
+.trade button:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.buy{background:#15803d}.sell{background:#b91c1c}
+.quantity{margin-top:15px}.quantity input{width:100%}
+.section-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.small-card{padding:18px}.small-card h2{margin:0 0 12px;font-size:18px}
+.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:9px;border-bottom:1px solid var(--border);font-size:13px}.table th{color:var(--muted)}
+.log{max-height:210px;overflow:auto}.log-item{padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}.log-item span{color:var(--muted)}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;align-items:center;justify-content:center;padding:18px}
+.modal.open{display:flex}.modal-box{width:min(520px,100%);max-height:90vh;overflow:auto;background:#111c31;border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.modal h2{margin-top:0}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.admin-btn{background:#263653;color:white;padding:12px;border-radius:10px;font-weight:800}.danger{background:#991b1b}.success{background:#166534}.blue{background:#075985}
+.message{min-height:22px;color:var(--muted);margin-top:10px;font-size:13px}
+hr{border:0;border-top:1px solid var(--border);margin:20px 0}
+.hidden{display:none!important}
+.toast{position:fixed;right:16px;bottom:16px;background:#17253d;border:1px solid var(--border);padding:13px 16px;border-radius:12px;box-shadow:var(--shadow);z-index:200;opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:none}
+@media(max-width:700px){
+  .stats,.section-grid{grid-template-columns:1fr}
+  .trade{grid-template-columns:1fr}
+  .container{width:min(100% - 18px,1050px)}
+  .market{padding:15px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">📈 <span>Dap</span>Market</div>
+  <button class="owner-btn" id="ownersButton">⚙ Owners Panel</button>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <h1>DapMarket</h1>
+    <p>Trade Dap Stock with Dap Coins.</p>
+  </section>
+
+  <section class="card market">
+    <div class="player-row">
+      <div class="field">
+        <label for="playerSelect">Current Player</label>
+        <select id="playerSelect"></select>
+      </div>
+      <div class="field">
+        <label>Market Status</label>
+        <div id="marketStatus" style="padding:11px 0;font-weight:800;color:var(--green)">● LIVE</div>
+      </div>
+    </div>
+
+    <div class="price" id="stockPrice">$10.00</div>
+    <div id="priceChange" class="change flat">Starting price</div>
+
+    <div class="chart-wrap"><canvas id="stockChart"></canvas></div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">DAP COINS</div><div class="value" id="coins">1.00</div></div>
+      <div class="stat"><div class="label">DAP STOCK</div><div class="value" id="shares">0</div></div>
+      <div class="stat"><div class="label">TOTAL VALUE</div><div class="value" id="portfolio">$1.00</div></div>
+    </div>
+
+    <div class="quantity">
+      <div class="field">
+        <label for="quantity">Quantity</label>
+        <input id="quantity" type="number" min="1" step="1" value="1">
+      </div>
+    </div>
+
+    <div class="trade">
+      <button class="buy" id="buyButton">📈 Buy Stock</button>
+      <button class="sell" id="sellButton">📉 Sell Stock</button>
+    </div>
+  </section>
+
+  <section class="section-grid">
+    <div class="card small-card">
+      <h2>🏆 Leaderboard</h2>
+      <table class="table"><thead><tr><th>Player</th><th>Stock</th><th>Total</th></tr></thead><tbody id="leaderboard"></tbody></table>
+    </div>
+    <div class="card small-card">
+      <h2>🧾 Recent Activity</h2>
+      <div class="log" id="activityLog"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="ownerModal">
+  <div class="modal-box">
+    <div id="passwordScreen">
+      <h2>🔐 Owners Panel</h2>
+      <p style="color:var(--muted)">Enter the owner password to unlock market controls.</p>
+      <div class="field"><label>Password</label><input id="passwordInput" type="password" placeholder="Enter password"></div>
+      <button class="admin-btn blue" style="width:100%;margin-top:12px" id="loginButton">Unlock</button>
+      <div class="message" id="passwordMessage"></div>
+      <button class="admin-btn danger" style="width:100%;margin-top:10px" id="closePasswordButton">Cancel</button>
+    </div>
+
+    <div id="adminPanel" class="hidden">
+      <h2>⚙️ Admin Panel</h2>
+      <p style="color:var(--muted)">Control the market and player balances.</p>
+
+      <div class="field"><label>Set Exact Stock Price</label><input id="setPriceInput" type="number" min=".25" step=".01" placeholder="Price"></div>
+      <div class="modal-actions">
+        <button class="admin-btn success" id="raiseButton">📈 Raise +5</button>
+        <button class="admin-btn danger" id="lowerButton">📉 Lower -5</button>
+      </div>
+      <button class="admin-btn blue" style="width:100%;margin-top:10px" id="setPriceButton">Set Exact Price</button>
+
+      <hr>
+      <h3>💰 Give Dap Coins</h3>
+      <div class="field"><label>Player</label><select id="givePlayer"></select></div>
+      <div class="field" style="margin-top:10px"><label>Amount</label><input id="giveAmount" type="number" min=".01" step=".01" value="1"></div>
+      <button class="admin-btn success" style="width:100%;margin-top:10px" id="giveCoinsButton">Give Dap Coins</button>
+
+      <hr>
+      <h3>🎁 Transfer Coins</h3>
+      <div class="field"><label>From</label><select id="transferFrom"></select></div>
+      <div class="field" style="margin-top:10px"><label>To</label><select id="transferTo"></select></div>
+      <div class="field" style="margin-top:10px"><label>Amount</label><input id="transferAmount" type="number" min=".01" step=".01" value="1"></div>
+      <button class="admin-btn blue" style="width:100%;margin-top:10px" id="transferButton">Transfer Coins</button>
+
+      <hr>
+      <div class="modal-actions">
+        <button class="admin-btn" id="pauseButton">⏸ Pause Market</button>
+        <button class="admin-btn danger" id="resetButton">↺ Reset Game</button>
+      </div>
+      <button class="admin-btn danger" style="width:100%;margin-top:12px" id="closeOwnerButton">Close Owners Panel</button>
+      <div class="message" id="adminMessage"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const STORAGE_KEY = "dapmarket_v2";
+const OWNER_PASSWORD = "1920";
+const MIN_PRICE = 0.25;
+const MAX_HISTORY = 120;
+const TICK_MS = 1000;
+
+const defaultPlayers = {
+  Blake:{coins:1,shares:0},
+  Alex:{coins:1,shares:0},
+  Jordan:{coins:1,shares:0},
+  Taylor:{coins:1,shares:0}
+};
+
+let state = loadState();
+
+const $ = id => document.getElementById(id);
+const els = {
+  price:$("stockPrice"), change:$("priceChange"), coins:$("coins"), shares:$("shares"),
+  portfolio:$("portfolio"), player:$("playerSelect"), quantity:$("quantity"),
+  chart:$("stockChart"), leaderboard:$("leaderboard"), log:$("activityLog"),
+  modal:$("ownerModal"), passwordScreen:$("passwordScreen"), admin:$("adminPanel"),
+  password:$("passwordInput"), passwordMessage:$("passwordMessage"),
+  adminMessage:$("adminMessage"), status:$("marketStatus"), toast:$("toast")
+};
+
+function loadState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(saved && saved.players) return {
+      stockPrice:Number(saved.stockPrice)||10,
+      previousPrice:Number(saved.previousPrice)||10,
+      history:Array.isArray(saved.history)&&saved.history.length?saved.history:[10],
+      players:saved.players,
+      currentPlayer:saved.currentPlayer||"Blake",
+      paused:Boolean(saved.paused),
+      activity:Array.isArray(saved.activity)?saved.activity:[]
+    };
+  }catch(e){}
+  return {
+    stockPrice:10, previousPrice:10, history:[10],
+    players:structuredClone(defaultPlayers), currentPlayer:"Blake",
+    paused:false, activity:[]
+  };
+}
+
+function saveState(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+}
+
+function money(n){ return "$"+Number(n).toFixed(2); }
+
+function notify(message){
+  els.toast.textContent=message;
+  els.toast.classList.add("show");
+  clearTimeout(notify.timer);
+  notify.timer=setTimeout(()=>els.toast.classList.remove("show"),2200);
+}
+
+function addActivity(message){
+  state.activity.unshift({message,time:new Date().toLocaleTimeString()});
+  state.activity=state.activity.slice(0,30);
+}
+
+function populatePlayers(){
+  const names=Object.keys(state.players);
+  for(const select of [els.player,$("givePlayer"),$("transferFrom"),$("transferTo")]){
+    const old=select.value;
+    select.innerHTML="";
+    names.forEach(name=>{
+      const option=document.createElement("option");
+      option.value=name; option.textContent=name; select.appendChild(option);
+    });
+    if(names.includes(old)) select.value=old;
+  }
+  els.player.value=state.currentPlayer;
+}
+
+function updateDisplay(){
+  const player=state.players[state.currentPlayer];
+  if(!player) return;
+  els.price.textContent=money(state.stockPrice);
+  els.coins.textContent=Number(player.coins).toFixed(2);
+  els.shares.textContent=player.shares;
+  els.portfolio.textContent=money(player.coins+player.shares*state.stockPrice);
+
+  const diff=state.stockPrice-state.previousPrice;
+  els.change.className="change "+(diff>0?"up":diff<0?"down":"flat");
+  els.change.textContent=diff>0?`▲ +${money(diff)} this tick`:diff<0?`▼ -${money(Math.abs(diff))} this tick`:"● No change";
+
+  els.status.textContent=state.paused?"● PAUSED":"● LIVE";
+  els.status.style.color=state.paused?"var(--gold)":"var(--green)";
+
+  renderLeaderboard();
+  renderLog();
+  drawChart();
+  saveState();
+}
+
+function renderLeaderboard(){
+  const rows=Object.entries(state.players).map(([name,p])=>({
+    name,total:p.coins+p.shares*state.stockPrice,shares:p.shares
+  })).sort((a,b)=>b.total-a.total);
+  els.leaderboard.innerHTML=rows.map((r,i)=>`<tr><td>${i+1}. ${escapeHtml(r.name)}</td><td>${r.shares}</td><td>${money(r.total)}</td></tr>`).join("");
+}
+
+function renderLog(){
+  if(!state.activity.length){
+    els.log.innerHTML='<div class="log-item"><span>No activity yet.</span></div>';
+    return;
+  }
+  els.log.innerHTML=state.activity.map(x=>`<div class="log-item">${escapeHtml(x.message)}<br><span>${escapeHtml(x.time)}</span></div>`).join("");
+}
+
+function escapeHtml(text){
+  return String(text).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function getQuantity(){
+  const q=Math.floor(Number(els.quantity.value));
+  if(!Number.isFinite(q)||q<1) return 0;
+  return q;
+}
+
+function buy(){
+  const p=state.players[state.currentPlayer], q=getQuantity();
+  if(!q){notify("Enter a valid quantity.");return}
+  const cost=q*state.stockPrice;
+  if(p.coins+1e-9<cost){notify("Not enough Dap Coins.");return}
+  p.coins-=cost;p.shares+=q;
+  addActivity(`${state.currentPlayer} bought ${q} Dap Stock for ${money(cost)}.`);
+  notify(`Bought ${q} Dap Stock.`);
+  updateDisplay();
+}
+
+function sell(){
+  const p=state.players[state.currentPlayer], q=getQuantity();
+  if(!q){notify("Enter a valid quantity.");return}
+  if(p.shares<q){notify("You don't own enough Dap Stock.");return}
+  const value=q*state.stockPrice;
+  p.shares-=q;p.coins+=value;
+  addActivity(`${state.currentPlayer} sold ${q} Dap Stock for ${money(value)}.`);
+  notify(`Sold ${q} Dap Stock.`);
+  updateDisplay();
+}
+
+function moveMarket(amount,reason){
+  state.previousPrice=state.stockPrice;
+  state.stockPrice=Math.max(MIN_PRICE,state.stockPrice+amount);
+  state.history.push(state.stockPrice);
+  if(state.history.length>MAX_HISTORY)state.history.shift();
+  addActivity(`Owner ${reason} the market to ${money(state.stockPrice)}.`);
+  updateDisplay();
+}
+
+function randomMarket(){
+  if(state.paused)return;
+  state.previousPrice=state.stockPrice;
+  const volatility=Math.max(.25,state.stockPrice*.045);
+  const movement=(Math.random()*2-1)*volatility;
+  state.stockPrice=Math.max(MIN_PRICE,state.stockPrice+movement);
+  state.history.push(state.stockPrice);
+  if(state.history.length>MAX_HISTORY)state.history.shift();
+  updateDisplay();
+}
+
+function drawChart(){
+  const canvas=els.chart, rect=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  const width=Math.max(1,rect.width),height=Math.max(1,rect.height);
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+  const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,width,height);
+  const data=state.history;if(data.length<2)return;
+  const min=Math.min(...data),max=Math.max(...data),range=Math.max(.01,max-min);
+  ctx.strokeStyle="rgba(148,163,184,.12)";ctx.lineWidth=1;
+  for(let i=1;i<5;i++){const y=i*height/5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke()}
+  const gradient=ctx.createLinearGradient(0,0,0,height);
+  gradient.addColorStop(0,"rgba(56,189,248,.25)");gradient.addColorStop(1,"rgba(56,189,248,0)");
+  ctx.beginPath();
+  data.forEach((price,i)=>{
+    const x=i*(width/(data.length-1));
+    const y=height-((price-min)/range)*(height-24)-12;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.lineTo(width,height);ctx.lineTo(0,height);ctx.closePath();ctx.fillStyle=gradient;ctx.fill();
+  ctx.beginPath();
+  data.forEach((price,i)=>{
+    const x=i*(width/(data.length-1));
+    const y=height-((price-min)/range)*(height-24)-12;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.strokeStyle="#38bdf8";ctx.lineWidth=3;ctx.stroke();
+}
+
+function unlock(){
+  if(els.password.value===OWNER_PASSWORD){
+    els.passwordScreen.classList.add("hidden");els.admin.classList.remove("hidden");
+    els.passwordMessage.textContent="";
+  }else{
+    els.passwordMessage.textContent="Incorrect password.";
+    els.password.value="";els.password.focus();
+  }
+}
+
+function closeOwner(){
+  els.modal.classList.remove("open");
+  els.passwordScreen.classList.remove("hidden");els.admin.classList.add("hidden");
+  els.password.value="";els.passwordMessage.textContent="";els.adminMessage.textContent="";
+}
+
+function giveCoins(){
+  const name=$("givePlayer").value, amount=Number($("giveAmount").value);
+  if(!Number.isFinite(amount)||amount<=0){els.adminMessage.textContent="Enter a valid amount.";return}
+  state.players[name].coins+=amount;
+  addActivity(`Owner gave ${money(amount)} to ${name}.`);
+  els.adminMessage.textContent=`Gave ${money(amount)} to ${name}.`;
+  updateDisplay();
+}
+
+function transfer(){
+  const from=$("transferFrom").value,to=$("transferTo").value,amount=Number($("transferAmount").value);
+  if(from===to){els.adminMessage.textContent="Choose two different players.";return}
+  if(!Number.isFinite(amount)||amount<=0){els.adminMessage.textContent="Enter a valid amount.";return}
+  if(state.players[from].coins<amount){els.adminMessage.textContent="The sender does not have enough coins.";return}
+  state.players[from].coins-=amount;state.players[to].coins+=amount;
+  addActivity(`${from} transferred ${money(amount)} to ${to}.`);
+  els.adminMessage.textContent=`Transferred ${money(amount)} from ${from} to ${to}.`;
+  updateDisplay();
+}
+
+function resetGame(){
+  if(!confirm("Reset DapMarket? This deletes saved local game data."))return;
+  state={
+    stockPrice:10,previousPrice:10,history:[10],
+    players:structuredClone(defaultPlayers),currentPlayer:"Blake",
+    paused:false,activity:[]
+  };
+  populatePlayers();addActivity("Game reset to defaults.");updateDisplay();
+  els.adminMessage.textContent="Game reset.";
+}
+
+els.player.addEventListener("change",e=>{state.currentPlayer=e.target.value;updateDisplay()});
+$("buyButton").addEventListener("click",buy);
+$("sellButton").addEventListener("click",sell);
+$("ownersButton").addEventListener("click",()=>{els.modal.classList.add("open");els.password.focus()});
+$("closeOwnerButton").addEventListener("click",closeOwner);
+$("closePasswordButton").addEventListener("click",closeOwner);
+$("loginButton").addEventListener("click",unlock);
+els.password.addEventListener("keydown",e=>{if(e.key==="Enter")unlock()});
+$("raiseButton").addEventListener("click",()=>moveMarket(5,"raised"));
+$("lowerButton").addEventListener("click",()=>moveMarket(-5,"lowered"));
+$("giveCoinsButton").addEventListener("click",giveCoins);
+$("transferButton").addEventListener("click",transfer);
+$("pauseButton").addEventListener("click",()=>{
+  state.paused=!state.paused;
+  $("pauseButton").textContent=state.paused?"▶ Resume Market":"⏸ Pause Market";
+  addActivity(`Owner ${state.paused?"paused":"resumed"} the market.`);
+  updateDisplay();
+});
+$("setPriceButton").addEventListener("click",()=>{
+  const price=Number($("setPriceInput").value);
+  if(!Number.isFinite(price)||price<MIN_PRICE){els.adminMessage.textContent=`Price must be at least ${money(MIN_PRICE)}.`;return}
+  state.previousPrice=state.stockPrice;state.stockPrice=price;state.history.push(price);
+  if(state.history.length>MAX_HISTORY)state.history.shift();
+  addActivity(`Owner set the market price to ${money(price)}.`);
+  els.adminMessage.textContent=`Price set to ${money(price)}.`;
+  updateDisplay();
+});
+$("resetButton").addEventListener("click",resetGame);
+window.addEventListener("resize",drawChart);
+
+populatePlayers();
+updateDisplay();
+setInterval(randomMarket,TICK_MS);
+</script>
+</body>
+</html>
